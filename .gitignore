@@ -1,1 +1,3 @@
 public_data_config.py
+/__pycache__
+db_config.py

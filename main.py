@@ -2,6 +2,7 @@
 import os
 import sys
 from os import path
+import pause
 
 import threading
 from threading import Timer, Thread
@@ -45,6 +46,7 @@ class BaseService:
         self.market_dict = None
         self.config_ndays = 20
         self.start_date = (datetime.now() - timedelta(days=40)).date().strftime("%Y-%m-%d")
+        self.ko_holiday_list =  ['2022-01_01','2022-01_31','2022-02_01','2022-02_02','2022-03_01','2022-03_09','2022-05_05','2022-05_08','2022-06_01','2022-06_06','2022-08_15','2022-09_09','2022-09_10','2022-09_11','2022-09_12','2022-10_03','2022-10_09','2022-10_10','2022-12_25']
 
     def scheduler(self):
         today_date = datetime.now().date().strftime("%Y-%m-%d")
@@ -232,46 +234,74 @@ class BaseService:
         return df
 
     def work(self):
-        schedule.every().days.at("15:30").do(self.scheduler)
-        schedule.every().days.at("06:30").do(self.scheduler)
-        while True:        
-            
-            print("Ready %s"%(datetime.now()))
-            now = datetime.now().time()
-            if (now > time(hour=15, minute=29)) and (now < time(hour=15, minute=31)):
-                text = "Analyzing the KOSPI. Time. %s"%now
-                _post_message(self, text)
-                print(text)
-                self.market = "kospi"       
-            if (now > time(hour=6, minute=29)) and (now < time(hour=6, minute=31)):
-                text = "Analyzing the SP500. Time. %s"%now
-                _post_message(self, text)
-                print(text)
-                self.market = "sp500"
-            schedule.run_pending()    
-            ot.sleep(59)
+        schedule.every().days.at("15:10").do(self.scheduler)
+        schedule.every().days.at("06:10").do(self.scheduler)
 
-            # print("Run %s"%datetime.now())
-            # now = datetime.now().time()
-            # if (now > time(hour=6, minute=00)) and (now < time(hour=7, minute=00)):
-            #     self.market = "sp500"
-            #     try:
-            #         t1 = Thread(target=self.scheduler)
-            #         t1.start()
-            #         t1.join()
-            #     except Exception as e:
-            #         print(e)
-            # elif (now > time(hour=14, minute=30)) and (now < time(hour=15, minute=30)):
-            #     self.market = "kospi"
-            #     try:
-            #         t2 = Thread(target=self.scheduler)
-            #         t2.start()
-            #         t2.join()
-            #     except Exception as e:
-            #         print(e)
-            # else:
-            #     self._post_message("Run Success. But This is not the time for results.")
-            
+        while True:
+            now = datetime.now().time()
+
+            weekno = datetime.today().weekday()
+            str_date = datetime.strftime(datetime.now().date(), "%Y-%m-%d")
+
+            # 주말인 경우
+            if weekno == 5:
+                future = datetime.combine((datetime.today() + timedelta(days=2)), datetime.strptime("00:00", "%H:%M").time())
+                text = "Today is saturday. Next_run_time : %s"%(future)
+                print(text)
+                _post_message(self, text)
+                ot.sleep((future - now).total_seconds())
+
+            if weekno == 6:
+                future = datetime.combine((datetime.today() + timedelta(days=1)), datetime.strptime("00:00", "%H:%M").time())
+                text = "Today is sunday. Next_run_time : %s"%(future)
+                print(text)
+                _post_message(self, text)
+                ot.sleep((future - now).total_seconds())
+
+            # 한국 휴일인 경우
+            if weekno < 5 and str_date in self.ko_holiday_list:
+                future = datetime.combine((datetime.today()), datetime.strptime("22:30", "%H:%M").time())
+                text = "Today is a Korean holiday. Next_run_time : %s"%(future)
+                print(text)
+                _post_message(self, text)
+                ot.sleep((future - now).total_seconds())
+
+            if weekno < 5 and str_date not in self.ko_holiday_list: 
+                if now.hour >= 7 and now.hour < 15:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("15:00", "%H:%M").time())
+                    text = "Start Analyzing at %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
+                    
+                if now.hour < 6:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("06:00", "%H:%M").time())
+                    text = "Start Analyzing at %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
+
+                if now.hour >= 16:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("23:59", "%H:%M").time())
+                    text = "Start Analyzing at %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
+                
+                if (now > time(hour=15, minute=9)) and (now < time(hour=15, minute=11)):
+                    text = "Analyzing the KOSPI. Time. %s"%now
+                    print(text)
+                    _post_message(self, text)
+                    self.market = "kospi"
+
+                if (now >= time(hour=6, minute=9)) and (now <= time(hour=6, minute=11)):
+                    text = "Analyzing the SP500. Time. %s"%now
+                    print(text)
+                    _post_message(self, text)
+                    self.market = "sp500"
+                schedule.run_pending()    
+                ot.sleep(59)
+
 
 if __name__ == "__main__":
     BaseService().work()

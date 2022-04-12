@@ -51,7 +51,8 @@ class BaseService:
             }
         self.market_dict = None
         self.config_ndays = 20
-        self.start_date = (datetime.now() - timedelta(days=40)).date().strftime("%Y-%m-%d")
+        self.financial_engineering_days = 252
+        self.start_date = (datetime.now() - timedelta(days=self.financial_engineering_days)).date().strftime("%Y-%m-%d")
         self.ko_holiday_list =  ['2022-01_01','2022-01_31','2022-02_01','2022-02_02','2022-03_01','2022-03_09','2022-05_05','2022-05_08','2022-06_01','2022-06_06','2022-08_15','2022-09_09','2022-09_10','2022-09_11','2022-09_12','2022-10_03','2022-10_09','2022-10_10','2022-12_25']
 
     def scheduler(self):
@@ -113,7 +114,13 @@ class BaseService:
 
     def _make_signal(self, df):
         try:
-            df = df.reset_index()
+            df = df[df["Volume"]>0].reset_index(drop=True)
+    
+            # 수익률 계산하기
+            df["daily_rtn"] = df["Close"].pct_change()  # 퍼센트 변화율
+            df["st_rtn"] = (1 + df["daily_rtn"]).cumprod()  # 누적곱 계산함수 return cumulative product over a DataFrame or Series axis.
+            gagr = (df.iloc[-1]['st_rtn'] ** (financial_engineering_days / len(df.index)) - 1) * 100
+
             df["TP"] = (df["High"] + df["Low"] + df["Close"]) / 3
             df["sma"] = df["TP"].rolling(self.config_ndays).mean()
             df["mad"] = df["TP"].rolling(self.config_ndays).apply(lambda x: pd.Series(x).mad())
@@ -157,10 +164,14 @@ class BaseService:
                         df.loc[i, "buy_price"] = 0
             
             r_dict = {
-                "symbol" : df.iloc[-1]["Symbol"],
-                "date" : df.iloc[-1]["Date"],
+                "symbol" : symbol,
+                "date" : datetime.strftime(df.iloc[-1]["Date"], "%Y-%m-%d"),
                 "trade_signal" : df.iloc[-1]["trade"],
-                "price" : df.iloc[-1]["Close"]
+                "price" : df.iloc[-1]["Close"],
+                "remain_shares" : df.iloc[-1]["shares"],
+                "holding_shares_buy_price" : df.iloc[-1]["buy_price"],
+                "cci_rtn" : df[df["trade"] == "sell"].iloc[-1]["rate"],
+                "buy_and_hold_rtn" : gagr
             }
             return r_dict
             
@@ -177,8 +188,9 @@ class BaseService:
 
         if self.market == "kospi":
             for symbol in self.market_stock_dict[self.market]:
+                ticker = symbol+".KS"
                 try:
-                    df = fdr.DataReader(symbol, start=self.start_date)
+                    df = yf.download(ticker, start=self.start_date, auto_adjust=True, progress=False).reset_index()
                     df["Symbol"] = symbol
 
                     r_dict = self._make_signal(df)
@@ -199,7 +211,7 @@ class BaseService:
         elif self.market == "sp500":
             for symbol in self.market_stock_dict[self.market]:
                 try:
-                    df = yf.download(symbol, start=self.start_date, show_errors=False)
+                    df = yf.download(symbol, start=self.start_date, auto_adjust=True, progress=False).reset_index()
                     df["Symbol"] = symbol
                     
                     r_dict = self._make_signal(df)
@@ -270,7 +282,6 @@ class BaseService:
                         }
                     idata.append(idict)
             if search_date > datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date():
-                print(datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date())
                 break
         driver.quit()
         if len(idata) > 0:
@@ -283,8 +294,8 @@ class BaseService:
 
     def work(self):
         schedule.every().days.at("15:10").do(self.scheduler)
-        schedule.every().days.at("22:31").do(self.scheduler)
-        schedule.every().days.at("22:35").do(self._get_priority_house_jungso)
+        schedule.every().days.at("22:35").do(self.scheduler)
+        schedule.every().days.at("22:30").do(self._get_priority_house_jungso)
 
         while True:
             now = datetime.now().time()
@@ -343,7 +354,7 @@ class BaseService:
                     _post_message(self, text)
                     self.market = "kospi"
 
-                if (now >= time(hour=22, minute=30)) and (now <= time(hour=22, minute=32)):
+                if (now >= time(hour=22, minute=34)) and (now <= time(hour=22, minute=36)):
                     text = "Analyzing the SP500. Time. %s"%now
                     print(text)
                     _post_message(self, text)

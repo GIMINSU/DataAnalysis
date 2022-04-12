@@ -235,7 +235,7 @@ class BaseService:
 
     def work(self):
         schedule.every().days.at("15:10").do(self.scheduler)
-        schedule.every().days.at("06:10").do(self.scheduler)
+        schedule.every().days.at("22:31").do(self.scheduler)
 
         while True:
             now = datetime.now().time()
@@ -267,23 +267,23 @@ class BaseService:
                 ot.sleep((future - now).total_seconds())
 
             if weekno < 5 and str_date not in self.ko_holiday_list: 
-                if now.hour >= 7 and now.hour < 15:
+                if now.hour >= 0 and now.hour < 15:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("15:00", "%H:%M").time())
-                    text = "Start Analyzing at %s"%(until_time)
+                    text = "Analysis will begin at %s"%(until_time)
                     print(text)
                     _post_message(self, text)
                     pause.until(until_time)
                     
                 if now.hour < 6:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("06:00", "%H:%M").time())
-                    text = "Start Analyzing at %s"%(until_time)
+                    text = "Analysis will begin at %s"%(until_time)
                     print(text)
                     _post_message(self, text)
                     pause.until(until_time)
 
-                if now.hour >= 16:
-                    until_time = datetime.combine(datetime.today(), datetime.strptime("23:59", "%H:%M").time())
-                    text = "Start Analyzing at %s"%(until_time)
+                if now.hour >= 16 and now.hour < 22:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("22:25", "%H:%M").time())
+                    text = "Analysis will begin at %s"%(until_time)
                     print(text)
                     _post_message(self, text)
                     pause.until(until_time)
@@ -294,7 +294,7 @@ class BaseService:
                     _post_message(self, text)
                     self.market = "kospi"
 
-                if (now >= time(hour=6, minute=9)) and (now <= time(hour=6, minute=11)):
+                if (now >= time(hour=22, minute=30)) and (now <= time(hour=22, minute=32)):
                     text = "Analyzing the SP500. Time. %s"%now
                     print(text)
                     _post_message(self, text)

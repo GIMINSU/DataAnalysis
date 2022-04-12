@@ -81,6 +81,7 @@ class BaseService:
                 pass
     
     def _get_stock_list(self):
+        print("do_get_stock_list")
         stock_list = []
         if self.market == "kospi":
             for i in range(1, 21):
@@ -190,7 +191,7 @@ class BaseService:
             for symbol in self.market_stock_dict[self.market]:
                 ticker = symbol+".KS"
                 try:
-                    df = yf.download(ticker, start=self.start_date, auto_adjust=True, progress=False).reset_index()
+                    df = yf.download(ticker, start=self.start_date, auto_adjust=True).reset_index()
                     df["Symbol"] = symbol
 
                     r_dict = self._make_signal(df)
@@ -211,19 +212,18 @@ class BaseService:
         elif self.market == "sp500":
             for symbol in self.market_stock_dict[self.market]:
                 try:
-                    df = yf.download(symbol, start=self.start_date, auto_adjust=True, progress=False).reset_index()
+                    df = yf.download(symbol, start=self.start_date, auto_adjust=True).reset_index()
                     df["Symbol"] = symbol
                     
                     r_dict = self._make_signal(df)
 
                     if r_dict["trade_signal"] == "buy":
-
                         buy_list.append(r_dict["symbol"])
-                        print(r_dict)
+                        print(r_dict["Symbol"])
                         idata.append(r_dict)
                     elif r_dict["trade_signal"] == "sell":
                         sell_list.append(r_dict["symbol"])
-                        print(r_dict)
+                        print(r_dict["Symbol"])
                         idata.append(r_dict)
 
                 except Exception as e:
@@ -245,6 +245,7 @@ class BaseService:
         
         try:
             df = pd.DataFrame.from_dict(idata)
+            df
         except Exception as e:
             self._post_message(e)
             pass
@@ -294,7 +295,7 @@ class BaseService:
 
     def work(self):
         schedule.every().days.at("15:10").do(self.scheduler)
-        schedule.every().days.at("22:35").do(self.scheduler)
+        schedule.every().days.at("01:16").do(self.scheduler)
         schedule.every().days.at("22:30").do(self._get_priority_house_jungso)
 
         while True:
@@ -327,38 +328,38 @@ class BaseService:
                 ot.sleep((future - now).total_seconds())
 
             if weekno < 5 and str_date not in self.ko_holiday_list: 
-                if now.hour >= 0 and now.hour < 15:
-                    until_time = datetime.combine(datetime.today(), datetime.strptime("15:00", "%H:%M").time())
-                    text = "Analysis will begin at %s"%(until_time)
-                    print(text)
-                    _post_message(self, text)
-                    pause.until(until_time)
+                # if now.hour >= 0 and now.hour < 15:
+                #     until_time = datetime.combine(datetime.today(), datetime.strptime("15:00", "%H:%M").time())
+                #     text = "Analysis will begin at %s"%(until_time)
+                #     print(text)
+                #     _post_message(self, text)
+                #     pause.until(until_time)
                     
-                if now.hour < 6:
-                    until_time = datetime.combine(datetime.today(), datetime.strptime("06:00", "%H:%M").time())
-                    text = "Analysis will begin at %s"%(until_time)
-                    print(text)
-                    _post_message(self, text)
-                    pause.until(until_time)
+                # if now.hour < 6:
+                #     until_time = datetime.combine(datetime.today(), datetime.strptime("06:00", "%H:%M").time())
+                #     text = "Analysis will begin at %s"%(until_time)
+                #     print(text)
+                #     _post_message(self, text)
+                #     pause.until(until_time)
 
-                if now.hour >= 14 and now.hour < 22:
-                    until_time = datetime.combine(datetime.today(), datetime.strptime("22:25", "%H:%M").time())
-                    text = "Analysis will begin at %s"%(until_time)
-                    print(text)
-                    _post_message(self, text)
-                    pause.until(until_time)
+                # if now.hour >= 14 and now.hour < 22:
+                #     until_time = datetime.combine(datetime.today(), datetime.strptime("22:25", "%H:%M").time())
+                #     text = "Analysis will begin at %s"%(until_time)
+                #     print(text)
+                #     _post_message(self, text)
+                #     pause.until(until_time)
 
-                if (now > time(hour=15, minute=9)) and (now < time(hour=15, minute=11)):
-                    text = "Analyzing the KOSPI. Time. %s"%now
-                    print(text)
-                    _post_message(self, text)
-                    self.market = "kospi"
+                # if (now > time(hour=15, minute=9)) and (now < time(hour=15, minute=11)):
+                #     text = "Analyzing the KOSPI. Time. %s"%now
+                #     print(text)
+                #     _post_message(self, text)
+                #     self.market = "kospi"
 
-                if (now >= time(hour=22, minute=34)) and (now <= time(hour=22, minute=36)):
+                if (now > time(hour=00, minute=57)) and (now < time(hour=1, minute=17)):
                     text = "Analyzing the SP500. Time. %s"%now
                     print(text)
                     _post_message(self, text)
-                    self.market = "sp500"
+                    self.market = "kospi"
                 schedule.run_pending()    
                 ot.sleep(59)
 

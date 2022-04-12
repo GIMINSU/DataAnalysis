@@ -29,6 +29,12 @@ from get_holiday import _get_holiday
 from bs4 import BeautifulSoup
 from urllib.request import urlopen
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+
+# pip install webdriver-manager  ## 항상 최신 버전의 chromedriver를 자동으로 사용
+from webdriver_manager.chrome import ChromeDriverManager
+
 
 class BaseService:
     def __init__(self):
@@ -232,10 +238,53 @@ class BaseService:
             pass
 
         return df
+        
+    def _get_priority_house_jungso(self):
+        driver = webdriver.Chrome(ChromeDriverManager().install())
+        url = "https://www.smes.go.kr/sanhakin/websquare/wq_main.do"
+        driver.get(url)
+        driver.implicitly_wait(10)
+        driver.find_element(By.XPATH, '//*[@id="genTopMenu_2_liTopMenu"]').click()
+        driver.implicitly_wait(1)
+        driver.find_element(By.XPATH, '//*[@id="genLeftMenu_3_leftMenuGrp"]').click()
+        driver.implicitly_wait(1)
+
+        idata = []
+        # pagelist1_page_2
+        search_date = datetime.today().date()
+        str_search_date = datetime.strftime(search_date, "%Y-%m-%d")
+        for page in range(1, 3):
+            # print(page)
+            driver.find_element(By.XPATH, '//*[@id="pagelist1_page_%s"]'%page).click()
+
+            driver.implicitly_wait(1)
+            for table_order in range (0, 10):
+                title = driver.find_element_by_css_selector('#gridView1_cell_%s_0'%table_order).text
+                str_start_date = driver.find_element_by_css_selector('#gridView1_cell_%s_3'%table_order).text.split(' ')[0]
+                start_date = datetime.strptime(str_start_date, "%Y-%m-%d").date()
+                if search_date <= start_date:
+                    idict = {
+                        "search_date" : str_search_date,
+                        "title" : title,
+                        "start_date" : str_start_date
+                        }
+                    idata.append(idict)
+            if search_date > datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date():
+                print(datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date())
+                break
+        driver.quit()
+        if len(idata) > 0:
+            text = "유효한 새로운 중소기업 장기근속자 주택 특별공급 없음"
+            _post_message(self, text)
+        else:
+            text = idata
+            _post_message(self, text)
+        return idata
 
     def work(self):
         schedule.every().days.at("15:10").do(self.scheduler)
         schedule.every().days.at("22:31").do(self.scheduler)
+        schedule.every().days.at("22:35").do(self._get_priority_house_jungso)
 
         while True:
             now = datetime.now().time()
@@ -281,13 +330,13 @@ class BaseService:
                     _post_message(self, text)
                     pause.until(until_time)
 
-                if now.hour >= 16 and now.hour < 22:
+                if now.hour >= 14 and now.hour < 22:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("22:25", "%H:%M").time())
                     text = "Analysis will begin at %s"%(until_time)
                     print(text)
                     _post_message(self, text)
                     pause.until(until_time)
-                
+
                 if (now > time(hour=15, minute=9)) and (now < time(hour=15, minute=11)):
                     text = "Analyzing the KOSPI. Time. %s"%now
                     print(text)
@@ -301,7 +350,6 @@ class BaseService:
                     self.market = "sp500"
                 schedule.run_pending()    
                 ot.sleep(59)
-
 
 if __name__ == "__main__":
     BaseService().work()

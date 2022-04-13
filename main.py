@@ -35,6 +35,7 @@ from selenium.webdriver.common.by import By
 # pip install webdriver-manager  ## 항상 최신 버전의 chromedriver를 자동으로 사용
 from webdriver_manager.chrome import ChromeDriverManager
 
+import json
 
 class BaseService:
     def __init__(self):
@@ -120,7 +121,7 @@ class BaseService:
             # 수익률 계산하기
             df["daily_rtn"] = df["Close"].pct_change()  # 퍼센트 변화율
             df["st_rtn"] = (1 + df["daily_rtn"]).cumprod()  # 누적곱 계산함수 return cumulative product over a DataFrame or Series axis.
-            gagr = (df.iloc[-1]['st_rtn'] ** (financial_engineering_days / len(df.index)) - 1) * 100
+            gagr = (df.iloc[-1]['st_rtn'] ** (self.financial_engineering_days / len(df.index)) - 1) * 100
 
             df["TP"] = (df["High"] + df["Low"] + df["Close"]) / 3
             df["sma"] = df["TP"].rolling(self.config_ndays).mean()
@@ -165,14 +166,15 @@ class BaseService:
                         df.loc[i, "buy_price"] = 0
             
             r_dict = {
-                "symbol" : symbol,
+                "symbol" : df.iloc[-1]["Symbol"],
+                "name" : self.market_dict.get(df.iloc[-1]["Symbol"]),
                 "date" : datetime.strftime(df.iloc[-1]["Date"], "%Y-%m-%d"),
                 "trade_signal" : df.iloc[-1]["trade"],
-                "price" : df.iloc[-1]["Close"],
+                "price" : round(df.iloc[-1]["Close"], 2),
                 "remain_shares" : df.iloc[-1]["shares"],
-                "holding_shares_buy_price" : df.iloc[-1]["buy_price"],
-                "cci_rtn" : df[df["trade"] == "sell"].iloc[-1]["rate"],
-                "buy_and_hold_rtn" : gagr
+                "holding_shares_buy_price" : round(df.iloc[-1]["buy_price"], 2),
+                "cci_rtn" : round(df[df["trade"] == "sell"].iloc[-1]["rate"], 2),
+                "buy_and_hold_rtn" : round(gagr, 2)
             }
             return r_dict
             
@@ -185,7 +187,8 @@ class BaseService:
         df = pd.DataFrame()
         buy_list = []
         sell_list = []
-        idata= []
+        buy_idata= []
+        sell_idata = []
 
         if self.market == "kospi":
             for symbol in self.market_stock_dict[self.market]:
@@ -198,12 +201,10 @@ class BaseService:
 
                     if r_dict["trade_signal"] == "buy":
                         buy_list.append(self.market_dict.get(r_dict["symbol"]))
-                        print(r_dict)
-                        idata.append(r_dict)
+                        buy_idata.append(r_dict)
                     elif r_dict["trade_signal"] == "sell":
                         sell_list.append(self.market_dict.get(r_dict["symbol"]))
-                        print(r_dict)
-                        idata.append(r_dict)
+                        sell_idata.append(r_dict)
                 except Exception as e:
                     # self._post_message(e)
                     print(e)
@@ -219,12 +220,10 @@ class BaseService:
 
                     if r_dict["trade_signal"] == "buy":
                         buy_list.append(r_dict["symbol"])
-                        print(r_dict["Symbol"])
-                        idata.append(r_dict)
+                        buy_idata.append(json.dumps(r_dict))
                     elif r_dict["trade_signal"] == "sell":
                         sell_list.append(r_dict["symbol"])
-                        print(r_dict["Symbol"])
-                        idata.append(r_dict)
+                        sell_idata.append(json.dumps(r_dict))
 
                 except Exception as e:
                     # self._post_message(e)
@@ -235,17 +234,19 @@ class BaseService:
         if len(buy_list) == 0:
             self._post_message("Today not exists buy stocks")
         if len(buy_list) > 0:
-            self._post_message("Buy_stocks : %s"%(buy_list))
+            self._post_message("Buy candidate stocks : %s"%(buy_list))
+            self._post_message("Buy Stock Info: %s"%(buy_idata))
 
         # 판매 데이터
         if len(sell_list) == 0:
             self._post_message("Today not exists sell stocks")
         if len(sell_list) > 0:
-            self._post_message("Sell_stocks : %s"%(sell_list))
+            self._post_message("Sell candidate stocks : %s"%(sell_list))
+            self._post_message("Sell Stock Info: %s"%(sell_idata))
         
         try:
-            df = pd.DataFrame.from_dict(idata)
-            df
+            df = pd.DataFrame.from_dict(buy_idata)
+            df = df.append(pd.DataFrame.from_dict(sell_idata))
         except Exception as e:
             self._post_message(e)
             pass
@@ -269,34 +270,41 @@ class BaseService:
         for page in range(1, 3):
             # print(page)
             driver.find_element(By.XPATH, '//*[@id="pagelist1_page_%s"]'%page).click()
-
-            driver.implicitly_wait(1)
+            driver.implicitly_wait(10)
             for table_order in range (0, 10):
                 title = driver.find_element_by_css_selector('#gridView1_cell_%s_0'%table_order).text
                 str_start_date = driver.find_element_by_css_selector('#gridView1_cell_%s_3'%table_order).text.split(' ')[0]
+                str_end_date = driver.find_element_by_css_selector('#gridView1_cell_%s_3'%table_order).text.split(' ')[-1]
                 start_date = datetime.strptime(str_start_date, "%Y-%m-%d").date()
-                if search_date <= start_date:
+                end_date = datetime.strptime(str_end_date, "%Y-%m-%d").date()
+                if search_date <= start_date or search_date <= end_date:
                     idict = {
                         "search_date" : str_search_date,
                         "title" : title,
-                        "start_date" : str_start_date
+                        "start_date" : str_start_date,
+                        "end_date" : str_end_date
                         }
                     idata.append(idict)
-            if search_date > datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date():
+            last_date = datetime.strptime(driver.find_element_by_css_selector('#gridView1_cell_9_3').text.split(' ')[0], "%Y-%m-%d").date()
+            if search_date > last_date:
                 break
         driver.quit()
+
         if len(idata) > 0:
-            text = "유효한 새로운 중소기업 장기근속자 주택 특별공급 없음"
+            text = str(idata)
             _post_message(self, text)
         else:
-            text = idata
+            text = "유효한 새로운 중소기업 장기근속자 주택 특별공급 없음"
             _post_message(self, text)
         return idata
 
     def work(self):
-        schedule.every().days.at("15:10").do(self.scheduler)
-        schedule.every().days.at("01:16").do(self.scheduler)
-        schedule.every().days.at("22:30").do(self._get_priority_house_jungso)
+        schedule.every().days.at("09:05").do(self.scheduler)
+        schedule.every().days.at("15:00").do(self.scheduler)
+        schedule.every().days.at("05:30").do(self.scheduler)
+        schedule.every().days.at("22:35").do(self.scheduler)
+        schedule.every().days.at("22:35").do(self._get_priority_house_jungso)
+        schedule.every().days.at("22:40").do(self._get_priority_house_jungso)
 
         while True:
             now = datetime.now().time()
@@ -328,38 +336,65 @@ class BaseService:
                 ot.sleep((future - now).total_seconds())
 
             if weekno < 5 and str_date not in self.ko_holiday_list: 
-                # if now.hour >= 0 and now.hour < 15:
-                #     until_time = datetime.combine(datetime.today(), datetime.strptime("15:00", "%H:%M").time())
-                #     text = "Analysis will begin at %s"%(until_time)
-                #     print(text)
-                #     _post_message(self, text)
-                #     pause.until(until_time)
-                    
-                # if now.hour < 6:
-                #     until_time = datetime.combine(datetime.today(), datetime.strptime("06:00", "%H:%M").time())
-                #     text = "Analysis will begin at %s"%(until_time)
-                #     print(text)
-                #     _post_message(self, text)
-                #     pause.until(until_time)
+                if now.hour >= 0 and now.hour < 5:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("05:00", "%H:%M").time())
+                    text = "Pause %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
 
-                # if now.hour >= 14 and now.hour < 22:
-                #     until_time = datetime.combine(datetime.today(), datetime.strptime("22:25", "%H:%M").time())
-                #     text = "Analysis will begin at %s"%(until_time)
-                #     print(text)
-                #     _post_message(self, text)
-                #     pause.until(until_time)
+                if now.hour >= 6 and now.hour < 9:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("09:00", "%H:%M").time())
+                    text = "Pause until %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
 
-                # if (now > time(hour=15, minute=9)) and (now < time(hour=15, minute=11)):
-                #     text = "Analyzing the KOSPI. Time. %s"%now
-                #     print(text)
-                #     _post_message(self, text)
-                #     self.market = "kospi"
+                if now.hour >= 10 and now.hour < 15:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("14:59", "%H:%M").time())
+                    text = "Pause until %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
 
-                if (now > time(hour=00, minute=57)) and (now < time(hour=1, minute=17)):
+                if now.hour >= 16 and now.hour < 22:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("22:32", "%H:%M").time())
+                    text = "Pause until %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
+
+                if now.hour >= 23:
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("24:00", "%H:%M").time())
+                    text = "Pause until %s"%(until_time)
+                    print(text)
+                    _post_message(self, text)
+                    pause.until(until_time)
+
+                if (now > time(hour=5, minute=29)) and (now < time(hour=5, minute=31)):
                     text = "Analyzing the SP500. Time. %s"%now
                     print(text)
                     _post_message(self, text)
+                    self.market = "sp500"
+
+                if (now > time(hour=9, minute=4)) and (now < time(hour=9, minute=6)):
+                    text = "Analyzing the KOSPI. Time. %s"%now
+                    print(text)
+                    _post_message(self, text)
                     self.market = "kospi"
+
+                if (now > time(hour=14, minute=59)) and (now < time(hour=15, minute=1)):
+                    text = "Analyzing the KOSPI. Time. %s"%now
+                    print(text)
+                    _post_message(self, text)
+                    self.market = "kospi"
+
+                if (now > time(hour=22, minute=34)) and (now < time(hour=22, minute=36)):
+                    text = "Analyzing the SP500. Time. %s"%now
+                    print(text)
+                    _post_message(self, text)
+                    self.market = "sp500"
+
                 schedule.run_pending()    
                 ot.sleep(59)
 

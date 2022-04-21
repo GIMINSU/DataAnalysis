@@ -56,30 +56,13 @@ class BaseService:
         self.start_date = (datetime.now() - timedelta(days=self.financial_engineering_days)).date().strftime("%Y-%m-%d")
         self.ko_holiday_list =  ['2022-01_01','2022-01_31','2022-02_01','2022-02_02','2022-03_01','2022-03_09','2022-05_05','2022-05_08','2022-06_01','2022-06_06','2022-08_15','2022-09_09','2022-09_10','2022-09_11','2022-09_12','2022-10_03','2022-10_09','2022-10_10','2022-12_25']
 
-    def scheduler(self):
-        today_date = datetime.now().date().strftime("%Y-%m-%d")
+    def work(self):
         try:
-            holiday_list = _get_holiday(self)
+            self._get_stock_list()
+            self._post_signal_to_slack()
         except Exception as e:
-            print(e)
-            holiday_list = []
-
-        if today_date not in holiday_list:
-            try:
-                self._get_stock_list()
-
-                self._post_signal_to_slack()
-            except Exception as e:
-                self._post_message(e)
-                pass
-
-        else:
-            try:
-                self._get_stock_list()
-                self._post_signal_to_slack()
-            except Exception as e:
-                self._post_message(e)
-                pass
+            self._post_message(e)
+            pass
     
     def _get_stock_list(self):
         print("do_get_stock_list")
@@ -165,25 +148,31 @@ class BaseService:
                         df.loc[i, "total_buy_price"] = 0
                         df.loc[i, "buy_price"] = 0
             
+            r_dict_symbol = "'''%s'''"%df.iloc[-1]["Symbol"]
+            name = "'''%s'''"%self.market_dict.get(df.iloc[-1]["Symbol"]).replace("\n", "")
+            date = "'''%s'''"%datetime.strftime(df.iloc[-1]["Date"], "%Y-%m-%d").replace("\n", "")
+            trade_signal = df.iloc[-1]["trade"]
+            price = round(df.iloc[-1]["Close"], 2)
+            remain_shares = df.iloc[-1]["shares"]
+            holding_shares_buy_price = round(df.iloc[-1]["buy_price"], 2)
+            cci_rtn = round(df[df["trade"] == "sell"].iloc[-1]["rate"], 2)
+            buy_and_hold_rtn = round(gagr, 2)
             r_dict = {
-                "symbol" : df.iloc[-1]["Symbol"],
-                "name" : self.market_dict.get(df.iloc[-1]["Symbol"]),
-                "date" : datetime.strftime(df.iloc[-1]["Date"], "%Y-%m-%d"),
-                "trade_signal" : df.iloc[-1]["trade"],
-                "price" : round(df.iloc[-1]["Close"], 2),
-                "remain_shares" : df.iloc[-1]["shares"],
-                "holding_shares_buy_price" : round(df.iloc[-1]["buy_price"], 2),
-                "cci_rtn" : round(df[df["trade"] == "sell"].iloc[-1]["rate"], 2),
-                "buy_and_hold_rtn" : round(gagr, 2)
+                "type" : "section",
+                "text" : {
+                    "type" : "mrkdwn",
+                    "text": "*symbol* : %s\n*name* : %s\n*trade_signal* : %s\n*date* : %s\n*price* : %s\n*remain_shares* : %s\n*holding_shares_buy_price* : %s\n*cci_rtn* : %s\n*buy_and_hold_rtn* : %s"%(r_dict_symbol, name, trade_signal, date, price, remain_shares, holding_shares_buy_price, cci_rtn, buy_and_hold_rtn)
+                }
             }
-            return r_dict
+            return r_dict, r_dict_symbol, trade_signal
             
         except Exception as e:
             # self._post_message(e)
-            print(e)
+            print("_make_signal Exception", e)
             pass
 
     def _post_signal_to_slack(self):
+        print("Do _post_signal_to_slack function.")
         df = pd.DataFrame()
         buy_list = []
         sell_list = []
@@ -197,17 +186,16 @@ class BaseService:
                     df = yf.download(ticker, start=self.start_date, auto_adjust=True).reset_index()
                     df["Symbol"] = symbol
 
-                    r_dict = self._make_signal(df)
-
-                    if r_dict["trade_signal"] == "buy":
-                        buy_list.append(self.market_dict.get(r_dict["symbol"]))
+                    r_dict, r_dict_symbol, trade_signal = self._make_signal(df)
+                    if trade_signal == "buy":
+                        buy_list.append(self.market_dict.get(symbol))
                         buy_idata.append(r_dict)
-                    elif r_dict["trade_signal"] == "sell":
-                        sell_list.append(self.market_dict.get(r_dict["symbol"]))
+                    elif trade_signal == "sell":
+                        sell_list.append(self.market_dict.get(symbol))
                         sell_idata.append(r_dict)
                 except Exception as e:
                     # self._post_message(e)
-                    print(e)
+                    print("kospi _post_signal_to_slack Exception", e)
                     pass
 
         elif self.market == "sp500":
@@ -216,46 +204,51 @@ class BaseService:
                     df = yf.download(symbol, start=self.start_date, auto_adjust=True).reset_index()
                     df["Symbol"] = symbol
                     
-                    r_dict = self._make_signal(df)
+                    r_dict, r_dict_symbol, trade_signal = self._make_signal(df)
 
-                    if r_dict["trade_signal"] == "buy":
-                        buy_list.append(r_dict["symbol"])
-                        buy_idata.append(json.dumps(r_dict))
-                    elif r_dict["trade_signal"] == "sell":
-                        sell_list.append(r_dict["symbol"])
-                        sell_idata.append(json.dumps(r_dict))
+                    if trade_signal == "buy":
+                        buy_list.append(r_dict_symbol)
+                        buy_idata.append(r_dict)
+                    elif trade_signal == "sell":
+                        sell_list.append(r_dict_symbol)
+                        sell_idata.append(r_dict)
 
                 except Exception as e:
                     # self._post_message(e)
-                    print(e)
+                    print("sp500 _post_signal_to_slack Exception", e)
                     pass
-            
+
         # 구매 데이터
         if len(buy_list) == 0:
             self._post_message("Today not exists buy stocks")
         if len(buy_list) > 0:
             self._post_message("Buy candidate stocks : %s"%(buy_list))
-            self._post_message("Buy Stock Info: %s"%(buy_idata))
+            info_message = {"blocks":buy_idata}
+            print(info_message)
+            self._post_message(info_message)
 
         # 판매 데이터
         if len(sell_list) == 0:
             self._post_message("Today not exists sell stocks")
         if len(sell_list) > 0:
             self._post_message("Sell candidate stocks : %s"%(sell_list))
-            self._post_message("Sell Stock Info: %s"%(sell_idata))
+            info_message = {"blocks":sell_idata}
+            print(info_message)
+            self._post_message(info_message)
         
-        try:
-            df = pd.DataFrame.from_dict(buy_idata)
-            df = df.append(pd.DataFrame.from_dict(sell_idata))
-        except Exception as e:
-            self._post_message(e)
-            pass
+        # try:
+        #     df = pd.DataFrame.from_dict(buy_idata)
+        #     df = df.append(pd.DataFrame.from_dict(sell_idata))
+        # except Exception as e:
+        #     self._post_message(e)
+        #     pass
 
-        return df
+        # return df
         
     def _get_priority_house_jungso(self):
         driver = webdriver.Chrome(ChromeDriverManager().install())
-        url = "https://www.smes.go.kr/sanhakin/websquare/wq_main.do"
+        # url = "https://www.smes.go.kr/sanhakin/websquare/wq_main.do"
+        url = "https://www.mss.go.kr/site/gyeonggi/ex/bbs/List.do?cbIdx=323"
         driver.get(url)
         driver.implicitly_wait(10)
         driver.find_element(By.XPATH, '//*[@id="genTopMenu_2_liTopMenu"]').click()
@@ -273,6 +266,7 @@ class BaseService:
             driver.implicitly_wait(10)
             for table_order in range (0, 10):
                 title = driver.find_element_by_css_selector('#gridView1_cell_%s_0'%table_order).text
+                # title = driver.find_element_by_css_selector('#contents_inner > div > table > tbody > tr:nth-child(%s) > td.mobile > a > div.subject > strong'%(table_order)).text
                 str_start_date = driver.find_element_by_css_selector('#gridView1_cell_%s_3'%table_order).text.split(' ')[0]
                 str_end_date = driver.find_element_by_css_selector('#gridView1_cell_%s_3'%table_order).text.split(' ')[-1]
                 start_date = datetime.strptime(str_start_date, "%Y-%m-%d").date()
@@ -298,13 +292,17 @@ class BaseService:
             _post_message(self, text)
         return idata
 
-    def work(self):
-        schedule.every().days.at("09:05").do(self.scheduler)
-        schedule.every().days.at("15:00").do(self.scheduler)
-        schedule.every().days.at("05:30").do(self.scheduler)
-        schedule.every().days.at("22:35").do(self.scheduler)
-        schedule.every().days.at("22:35").do(self._get_priority_house_jungso)
-        schedule.every().days.at("22:40").do(self._get_priority_house_jungso)
+    def worker(self):
+        schedule.every().days.at("09:05").do(self.work)
+        schedule.every().days.at("15:00").do(self.work)
+        schedule.every().days.at("05:30").do(self.work)
+        schedule.every().days.at("22:35").do(self.work)
+        try:
+            schedule.every().days.at("09:30").do(self._get_priority_house_jungso)
+            schedule.every().days.at("22:40").do(self._get_priority_house_jungso)
+        except Exception as e:
+            print(e)
+            pass
 
         while True:
             now = datetime.now().time()
@@ -312,7 +310,7 @@ class BaseService:
             weekno = datetime.today().weekday()
             str_date = datetime.strftime(datetime.now().date(), "%Y-%m-%d")
 
-            # 주말인 경우
+            # 토요일인 경우 이틀 이후 다시 시작
             if weekno == 5:
                 future = datetime.combine((datetime.today() + timedelta(days=2)), datetime.strptime("00:00", "%H:%M").time())
                 text = "Today is saturday. Next_run_time : %s"%(future)
@@ -320,6 +318,7 @@ class BaseService:
                 _post_message(self, text)
                 ot.sleep((future - now).total_seconds())
 
+            # 일요일인 경우 하루 뒤 다시 시작
             if weekno == 6:
                 future = datetime.combine((datetime.today() + timedelta(days=1)), datetime.strptime("00:00", "%H:%M").time())
                 text = "Today is sunday. Next_run_time : %s"%(future)
@@ -327,7 +326,7 @@ class BaseService:
                 _post_message(self, text)
                 ot.sleep((future - now).total_seconds())
 
-            # 한국 휴일인 경우
+            # 평일이지만 공휴일인 경우 
             if weekno < 5 and str_date in self.ko_holiday_list:
                 future = datetime.combine((datetime.today()), datetime.strptime("22:30", "%H:%M").time())
                 text = "Today is a Korean holiday. Next_run_time : %s"%(future)
@@ -394,9 +393,9 @@ class BaseService:
                     print(text)
                     _post_message(self, text)
                     self.market = "sp500"
-
+                
                 schedule.run_pending()    
                 ot.sleep(59)
 
 if __name__ == "__main__":
-    BaseService().work()
+    BaseService().worker()

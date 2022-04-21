@@ -91,7 +91,7 @@ class BaseService:
 
     def _make_signal(self, df):
         try:
-            df = df[df["Volume"]>0].reset_index(drop=True)
+            # df = df[df["Volume"]>0].reset_index(drop=True)
     
             # 수익률 계산하기
             df["daily_rtn"] = df["Close"].pct_change()  # 퍼센트 변화율
@@ -105,8 +105,8 @@ class BaseService:
             
             df["pre1day_cci"] = df["CCI"].shift(1)
             df["trade"] = None
-            df["trade"] = np.where((df["CCI"] >= -100) & (df["pre1day_cci"] < -100), "buy", df["trade"])
-            df["trade"] = np.where((df["CCI"] <= 100) & (df["pre1day_cci"] > 100), "sell", df["trade"])
+            df["trade"] = np.where((df["CCI"] >= -100) & (df["pre1day_cci"] < -100), "Buy", df["trade"])
+            df["trade"] = np.where((df["CCI"] <= 100) & (df["pre1day_cci"] > 100), "Sell", df["trade"])
             
             df["total_buy_price"] = 0
             df["shares"] = 0
@@ -117,7 +117,7 @@ class BaseService:
 
             buy_price_list = []
             for i, x in df.iterrows():
-                if x["trade"] == "buy":
+                if x["trade"] == "Buy":
                     buy_price_list.append(x["Close"])
                     df.loc[i, "total_buy_price"] = np.sum(buy_price_list)
                     df.loc[i, "shares"] = len(buy_price_list)
@@ -127,7 +127,7 @@ class BaseService:
                         df.loc[i, "shares"] = df.loc[i-1, "shares"]
                         df.loc[i, "buy_price"] = df.loc[i-1, "buy_price"]
                         df.loc[i, "total_buy_price"] = df.loc[i-1, "total_buy_price"]
-                elif x["trade"] == "sell" and df.loc[i-1, "shares"] > 0:
+                elif x["trade"] == "Sell" and df.loc[i-1, "shares"] > 0:
                     first_price = buy_price_list.pop(0)
                     df.loc[i, "revenue"] = df.loc[i, "Close"] - first_price
                     df.loc[i, "rate"] = df.loc[i, "revenue"] / first_price * 100
@@ -147,13 +147,13 @@ class BaseService:
             price = round(df.iloc[-1]["Close"], 2)
             remain_shares = df.iloc[-1]["shares"]
             holding_shares_buy_price = round(df.iloc[-1]["buy_price"], 2)
-            cci_rtn = round(df[df["trade"] == "sell"].iloc[-1]["rate"], 2)
+            cci_rtn = round(df[df["trade"] == "Sell"].iloc[-1]["rate"], 2)
             buy_and_hold_rtn = round(gagr, 2)
             r_dict = {
                 "type" : "section",
                 "text" : {
                     "type" : "mrkdwn",
-                    "text": "*symbol* : %s\n*name* : %s\n*trade_signal* : %s\n*date* : %s\n*price* : %s\n*remain_shares* : %s\n*holding_shares_buy_price* : %s\n*cci_rtn* : %s\n*buy_and_hold_rtn* : %s"%(r_dict_symbol, name, trade_signal, date, price, remain_shares, holding_shares_buy_price, cci_rtn, buy_and_hold_rtn)
+                    "text": "*Symbol* : %s\n*Name* : %s\n*Trade_signal* : %s\n*Date* : %s\n*Price* : %s\n*Remain_shares* : %s\n*Holding_shares_buy_price* : %s\n*CCI_rtn* : %s\n*Buy_and_hold_rtn* : %s"%(r_dict_symbol, name, trade_signal, date, price, remain_shares, holding_shares_buy_price, cci_rtn, buy_and_hold_rtn)
                 }
             }
             return r_dict, r_dict_symbol, trade_signal
@@ -175,14 +175,14 @@ class BaseService:
             # for symbol in list(self.market_stock_dict[self.market].keys())[:20]:  # 테스트 할 때 20개만 테스트
                 ticker = symbol+".KS"
                 try:
-                    df = yf.download(ticker, start=self.start_date, auto_adjust=True).reset_index()
+                    df = yf.download(ticker, start=self.start_date, auto_adjust=True, actions=True, threads=False).reset_index()
                     df["Symbol"] = symbol
 
                     r_dict, r_dict_symbol, trade_signal = self._make_signal(df)
-                    if trade_signal == "buy":
+                    if trade_signal == "Buy":
                         buy_list.append(self.market_dict.get(symbol))
                         buy_idata.append(r_dict)
-                    elif trade_signal == "sell":
+                    elif trade_signal == "Sell":
                         sell_list.append(self.market_dict.get(symbol))
                         sell_idata.append(r_dict)
                 except Exception as e:
@@ -192,15 +192,14 @@ class BaseService:
         elif self.market == "sp500":
             for symbol in self.market_stock_dict[self.market]:
                 try:
-                    df = yf.download(symbol, start=self.start_date, auto_adjust=True).reset_index()
+                    df = yf.download(symbol, start=self.start_date, auto_adjust=True, actions=True, threads=False).reset_index()
                     df["Symbol"] = symbol
                     
                     r_dict, r_dict_symbol, trade_signal = self._make_signal(df)
-
-                    if trade_signal == "buy":
+                    if trade_signal == "Buy":
                         buy_list.append(r_dict_symbol)
                         buy_idata.append(r_dict)
-                    elif trade_signal == "sell":
+                    elif trade_signal == "Sell":
                         sell_list.append(r_dict_symbol)
                         sell_idata.append(r_dict)
 
@@ -210,16 +209,16 @@ class BaseService:
 
         # 구매 데이터
         if len(buy_list) == 0:
-            _post_message(BaseService(), text = "Today not exists buy stocks")
+            _post_message(BaseService(), text = "TODAY NOT EXISTS BUY STOCKS.")
         if len(buy_list) > 0:
-            _post_message(BaseService(), text = "Buy candidate stocks : %s"%(buy_list))
+            _post_message(BaseService(), text = "BUY CANDIDATE STOCKS : %s"%(buy_list))
             _post_message_with_slack_sdk(BaseService(), blocks=buy_idata)
 
         # 판매 데이터
         if len(sell_list) == 0:
-            _post_message(BaseService(), text = "Today not exists sell stocks")
+            _post_message(BaseService(), text = "TODAY NOT EXISTS SELL STOCKS.")
         if len(sell_list) > 0:
-            _post_message(BaseService(), text = "Sell candidate stocks : %s"%(sell_list))
+            _post_message(BaseService(), text = "SELL CANDIDATE STOCKS : %s"%(sell_list))
             _post_message_with_slack_sdk(BaseService(), blocks=sell_idata)
         
         # try:
@@ -324,7 +323,7 @@ class BaseService:
             if weekno < 5 and str_date not in self.ko_holiday_list: 
                 if now.hour >= 0 and now.hour < 5:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("05:28", "%H:%M").time())
-                    text = "Pause %s"%(until_time)
+                    text = "Pause untile %s"%(until_time)
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
@@ -376,19 +375,14 @@ class BaseService:
                     self.market = "sp500"
 
                 if now.hour >= 23:
-                    until_time = datetime.combine(datetime.today(), datetime.strptime("24:00", "%H:%M").time())
+                    until_time = datetime.combine(datetime.today(), datetime.strptime("23:59", "%H:%M").time())
                     text = "Pause until %s"%(until_time)
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                
-
-                
-
-
-
-
+                str_now = datetime.now().strftime('%m-%d-%y %H:%M:%S')
+                print(f"Trading signal generation algorithm running! %s"%str_now)
                 schedule.run_pending()    
                 ot.sleep(59)
 

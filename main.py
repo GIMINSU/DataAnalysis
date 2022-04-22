@@ -153,7 +153,8 @@ class BaseService:
                 "type" : "section",
                 "text" : {
                     "type" : "mrkdwn",
-                    "text": "*Symbol* : %s\n*Name* : %s\n*Trade_signal* : %s\n*Date* : %s\n*Price* : %s\n*Remain_shares* : %s\n*Holding_shares_buy_price* : %s\n*CCI_rtn* : %s\n*Buy_and_hold_rtn* : %s"%(r_dict_symbol, name, trade_signal, date, price, remain_shares, holding_shares_buy_price, cci_rtn, buy_and_hold_rtn)
+                    # "text": "*Symbol* : %s\n*Name* : %s\n*Trade_signal* : %s\n*Date* : %s\n*Price* : %s\n*Remain_shares* : %s\n*Holding_shares_buy_price* : %s\n*CCI_rtn* : %s\n*Buy_and_hold_rtn* : %s"%(r_dict_symbol, name, trade_signal, date, price, remain_shares, holding_shares_buy_price, cci_rtn, buy_and_hold_rtn)
+                    "text": f"Symbol : {r_dict_symbol}\nName : {name}\n매매신호 : {trade_signal}\n신호발생날짜 : {date}\n신호발생가격 : {price}\nCCI전략 남은 주식수 : {remain_shares}\nCCI전략 남은주식 평균매수가격 : {holding_shares_buy_price}\n{self.start_date}일부터 CCI전략수익률 : {cci_rtn}\n{self.start_date}일 구매후 보유수익률 : {buy_and_hold_rtn}"
                 }
             }
             return r_dict, r_dict_symbol, trade_signal
@@ -211,14 +212,15 @@ class BaseService:
         if len(buy_list) == 0:
             _post_message(BaseService(), text = "TODAY NOT EXISTS BUY STOCKS.")
         if len(buy_list) > 0:
-            _post_message(BaseService(), text = "BUY CANDIDATE STOCKS : %s"%(buy_list))
+            # _post_message(BaseService(), text = "BUY CANDIDATE STOCKS : %s"%(buy_list))
+            _post_message(BaseService(), text = "*현 시각 매수 후보 주식* : %s"%(buy_list))
             _post_message_with_slack_sdk(BaseService(), blocks=buy_idata)
 
         # 판매 데이터
         if len(sell_list) == 0:
             _post_message(BaseService(), text = "TODAY NOT EXISTS SELL STOCKS.")
         if len(sell_list) > 0:
-            _post_message(BaseService(), text = "SELL CANDIDATE STOCKS : %s"%(sell_list))
+            _post_message(BaseService(), text = "*현 시각 매도 후보 주식* : %s"%(sell_list))
             _post_message_with_slack_sdk(BaseService(), blocks=sell_idata)
         
         # try:
@@ -262,7 +264,7 @@ class BaseService:
                                 "type" : "section",
                                 "text" : {
                                     "type" : "mrkdwn",
-                                    "text": "*search_date* : %s\n*title* : %s\n*start_date* : %s\n*end_date* : %s"%(str_search_date, title, str_start_date, str_end_date)
+                                    "text": f"*조회일* : {str_search_date}\n*제목* : {title}\n*신청시작일* : {str_start_date}\n*신청종료일* : {str_end_date}"
                                 }
                             }
                         idata.append(idict)

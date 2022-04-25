@@ -58,8 +58,8 @@ class BaseService:
                 "type" : "section",
                 "text" : {
                     "type" : "mrkdwn",
-                    "text" : f"현 시각 매수 후보 주식 상위 10개 : {buy_stock_list}\n\
-현 시각 매도 후보 주식 상위 10개 : {sell_stock_list}\n\
+                    "text" : f"현 시각 매수 후보 주식 : {buy_stock_list}\n\
+현 시각 매도 후보 주식 : {sell_stock_list}\n\
 현 시각 매수 후보 주식 갯수 : {today_buy_stock_count}\n\
 현 시각 매도 후보 주식 갯수 : {today_sell_stock_count}\n\
 {self.start_date}일 이후 일평균 매수 추천 주식 갯수 : {daily_buy_stock_count_mean}\n\
@@ -70,12 +70,12 @@ class BaseService:
             _post_message_with_slack_sdk(self, blocks=[candidate_dict])
 
             if self.market == "kospi":
-                buy_df = r_df[r_df["name"].isin(buy_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False).reset_index(drop=True)
-                sell_df = r_df[r_df["name"].isin(sell_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"]).reset_index(drop=True)
+                buy_df = r_df[r_df["name"].isin(buy_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False).reset_index(drop=True).iloc[:self.max_trade_stock_count]
+                sell_df = r_df[r_df["name"].isin(sell_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"]).reset_index(drop=True).iloc[:self.max_trade_stock_count]
             
             if self.market == "sp500":
-                buy_df = r_df[r_df["symbol"].isin(buy_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False).reset_index(drop=True)
-                sell_df = r_df[r_df["symbol"].isin(sell_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"]).reset_index(drop=True)
+                buy_df = r_df[r_df["symbol"].isin(buy_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False).reset_index(drop=True).iloc[:self.max_trade_stock_count]
+                sell_df = r_df[r_df["symbol"].isin(sell_stock_list)].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"]).reset_index(drop=True).iloc[:self.max_trade_stock_count]
 
             stock_info_list = []
             
@@ -140,7 +140,7 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
         schedule.every().days.at("22:35").do(self.work)
         schedule.every().days.at("22:40").do(self.run_crawler)
 
-        # schedule.every().days.at("03:08").do(self.work)
+        # schedule.every().days.at("20:37").do(self.work)
 
         while True:
             now = datetime.now().time()

@@ -35,13 +35,13 @@ def _collect_cci_signal(self, market_stock_dict):
     buy_stock_list = []
     sell_stock_list = []
     if self.market == "kospi":
-        buy_stock_list = r_df[r_df["trade_signal"]=="Buy"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False)["name"].tolist()[:self.max_trade_stock_count]
-        sell_stock_list = r_df[r_df["trade_signal"]=="Sell"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"])["name"].tolist()[:self.max_trade_stock_count]
+        buy_stock_list = r_df[r_df["trade_signal"]=="Buy"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False)["name"].tolist()
+        sell_stock_list = r_df[r_df["trade_signal"]=="Sell"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"])["name"].tolist()
         r_df[r_df["name"].isin(buy_stock_list)]
 
     elif self.market == "sp500":
-        buy_stock_list = r_df[r_df["trade_signal"]=="Buy"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False)["symbol"].tolist()[:self.max_trade_stock_count]
-        sell_stock_list = r_df[r_df["trade_signal"]=="Sell"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"])["symbol"].tolist()[:self.max_trade_stock_count]
+        buy_stock_list = r_df[r_df["trade_signal"]=="Buy"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"], ascending=False)["symbol"].tolist()
+        sell_stock_list = r_df[r_df["trade_signal"]=="Sell"].sort_values(["cci_buy_and_hold_diff_rtn", f"within_{self.target_days}days_expected_rtn"])["symbol"].tolist()
         
 
     buy_df = total_df[total_df["trade"] == "Buy"].sort_values("Date").reset_index(drop=True)

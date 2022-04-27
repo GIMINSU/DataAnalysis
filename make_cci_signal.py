@@ -13,12 +13,11 @@ def _make_cci_signal(self, df):
         df["sma"] = df["TP"].rolling(self.config_ndays).mean()
         df["mad"] = df["TP"].rolling(self.config_ndays).apply(lambda x: pd.Series(x).mad())
         df["CCI"] = (df["TP"] - df["sma"]) / (0.015 * df["mad"])
-        
-        
-        df["pre1day_cci"] = df["CCI"].shift(1)
+        df["pre1day_CCI"] = df["CCI"].shift(1)
+
         df["trade"] = "Neutral"
-        df["trade"] = np.where((df["CCI"] >= -100) & (df["pre1day_cci"] < -100), "Buy", df["trade"])
-        df["trade"] = np.where((df["CCI"] <= 100) & (df["pre1day_cci"] > 100), "Sell", df["trade"])
+        df["trade"] = np.where((df["CCI"] >= -100) & (df["pre1day_CCI"] < -100), "Buy", df["trade"])
+        df["trade"] = np.where((df["CCI"] <= 100) & (df["pre1day_CCI"] > 100), "Sell", df["trade"])
         
         df["total_buy_price"] = 0
         df["shares"] = 0

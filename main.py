@@ -51,7 +51,7 @@ class BaseService:
     def work(self):
         try:
             market_stock_dict = _get_stock_list(self)
-            r_df, buy_stock_list, sell_stock_list, daily_buy_stock_count_mean, daily_sell_stock_count_mean, today_buy_stock_count, today_sell_stock_count = _collect_cci_signal(self, market_stock_dict)
+            r_df, buy_stock_list, sell_stock_list, daily_buy_stock_count_mean, daily_sell_stock_count_mean, today_buy_stock_count, today_sell_stock_count, cci_over_count_mean, cci_less_count_mean, today_cci_over_count, today_cci_less_count = _collect_cci_signal(self, market_stock_dict)
 
             # post a list of stock trade candidates to slack.
             candidate_dict = {
@@ -63,7 +63,11 @@ class BaseService:
 현 시각 매수 후보 주식 갯수 : {today_buy_stock_count}\n\
 현 시각 매도 후보 주식 갯수 : {today_sell_stock_count}\n\
 {self.start_date}일 이후 일평균 매수 추천 주식 갯수 : {daily_buy_stock_count_mean}\n\
-{self.start_date}일 이후 일평균 매도 추천 주식 갯수 : {daily_sell_stock_count_mean}"
+{self.start_date}일 이후 일평균 매도 추천 주식 갯수 : {daily_sell_stock_count_mean}\n\
+현 시각 CCI 100 초과 주식 갯수 : {today_cci_over_count}\n\
+현 시각 CCI -100 미만 주식 갯수 : {today_cci_less_count}\n\
+{self.start_date}일 이후 일평균 CCI 100 초과 주식 갯수 : {cci_over_count_mean}\n\
+{self.start_date}일 이후 일평균 CCI -100 미만 주식 갯수 : {cci_less_count_mean}"
 }
 }
 
@@ -138,9 +142,9 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
         schedule.every().days.at("09:30").do(self.run_crawler)
         schedule.every().days.at("15:00").do(self.work)
         schedule.every().days.at("22:35").do(self.work)
-        schedule.every().days.at("22:40").do(self.run_crawler)
+        schedule.every().days.at("22:45").do(self.run_crawler)
 
-        # schedule.every().days.at("20:37").do(self.work)
+        # schedule.every().days.at("20:57").do(self.work)
 
         while True:
             now = datetime.now().time()

@@ -147,7 +147,8 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
         # schedule.every().days.at("20:57").do(self.work)
 
         while True:
-            now = datetime.now().time()
+            now_time = datetime.now().time()
+            now_datetime = datetime.now()
 
             weekno = datetime.today().weekday()
             str_date = datetime.strftime(datetime.now().date(), "%Y-%m-%d")
@@ -158,7 +159,7 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                 text = "Today is saturday. Next_run_time : %s"%(future)
                 print(text)
                 _post_message(self, text = text)
-                ot.sleep((future - now).total_seconds())
+                ot.sleep((future - now_datetime).total_seconds())
 
             # 일요일인 경우 하루 뒤 다시 시작
             if weekno == 6:
@@ -166,7 +167,7 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                 text = "Today is sunday. Next_run_time : %s"%(future)
                 print(text)
                 _post_message(self, text = text)
-                ot.sleep((future - now).total_seconds())
+                ot.sleep((future - now_datetime).total_seconds())
 
             # 평일이지만 공휴일인 경우 
             if weekno < 5 and str_date in self.ko_holiday_list:
@@ -174,49 +175,49 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                 text = "Today is a Korean holiday. Next_run_time : %s"%(future)
                 print(text)
                 _post_message(self, text = text)
-                ot.sleep((future - now).total_seconds())
+                ot.sleep((future - now_datetime).total_seconds())
 
             if weekno < 5 and str_date not in self.ko_holiday_list: 
-                if now.hour >= 0 and now.hour < 5:
+                if now_time.hour >= 0 and now_time.hour < 5:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("05:28", "%H:%M").time())
                     text = "Pause untile %s"%(until_time)
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                if (now > time(hour=5, minute=29)) and (now < time(hour=5, minute=31)):
-                    text = "Analyzing the SP500. Time. %s"%now
+                if (now_time > time(hour=5, minute=29)) and (now_time < time(hour=5, minute=31)):
+                    text = "Analyzing the SP500. Time. %s"%now_time
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "sp500"
 
-                if now.hour >= 6 and now.hour < 9:
+                if now_time.hour >= 6 and now_time.hour < 9:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("09:00", "%H:%M").time())
                     text = "Pause until %s"%(until_time)
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                if (now > time(hour=9, minute=4)) and (now < time(hour=9, minute=6)):
-                    text = "Analyzing the KOSPI. Time. %s"%now
+                if (now_time > time(hour=9, minute=4)) and (now_time < time(hour=9, minute=6)):
+                    text = "Analyzing the KOSPI. Time. %s"%now_time
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "kospi"
 
-                if now.hour >= 10 and now.hour < 15:
+                if now_time.hour >= 10 and now_time.hour < 15:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("14:59", "%H:%M").time())
                     text = "Pause until %s"%(until_time)
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                if (now > time(hour=14, minute=59)) and (now < time(hour=15, minute=1)):
-                    text = "Analyzing the KOSPI. Time. %s"%now
+                if (now_time > time(hour=14, minute=59)) and (now_time < time(hour=15, minute=1)):
+                    text = "Analyzing the KOSPI. Time. %s"%now_time
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "kospi"
 
-                if now.hour >= 16 and now.hour < 22:
+                if now_time.hour >= 16 and now_time.hour < 22:
                     until_time = datetime.combine(datetime.today(), datetime.strptime("22:32", "%H:%M").time())
                     text = "Pause until %s"%(until_time)
                     print(text)
@@ -224,8 +225,8 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                     pause.until(until_time)
 
 
-                if (now > time(hour=22, minute=34)) and (now < time(hour=22, minute=36)):
-                    text = "Analyzing the SP500. Time. %s"%now
+                if (now_time > time(hour=22, minute=34)) and (now_time < time(hour=22, minute=36)):
+                    text = "Analyzing the SP500. Time. %s"%now_time
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "sp500"

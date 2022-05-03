@@ -46,11 +46,19 @@ def _collect_cci_signal(self, market_stock_dict):
 
     buy_df = total_df[total_df["trade"] == "Buy"].sort_values("Date").reset_index(drop=True)
     sell_df = total_df[total_df["trade"] == "Sell"].sort_values("Date").reset_index(drop=True)
+    cci_over_df = total_df[total_df["CCI"] > 100].sort_values("Date").reset_index(drop=True)
+    cci_less_df = total_df[total_df["CCI"] < -100].sort_values("Date").reset_index(drop=True)
     daily_buy_stock_count_mean = round(buy_df.groupby("Date")["Symbol"].nunique().reset_index(name="buy_count")["buy_count"].mean(), 2)
     daily_sell_stock_count_mean = round(sell_df.groupby("Date")["Symbol"].nunique().reset_index(name="sell_count")["sell_count"].mean(), 2)
+    cci_over_count_mean = round(cci_over_df.groupby("Date")["Symbol"].nunique().reset_index(name="over_count")["over_count"].mean(), 2)
+    cci_less_count_mean = round(cci_less_df.groupby("Date")["Symbol"].nunique().reset_index(name="less_count")["less_count"].mean(), 2)
 
     today_buy_stock_count = buy_df[buy_df["Date"]==buy_df["Date"].iloc[-1]]["Symbol"].nunique()
     today_sell_stock_count = sell_df[sell_df["Date"]==sell_df["Date"].iloc[-1]]["Symbol"].nunique()
+    
+    today_cci_over_count = cci_over_df[cci_over_df["Date"]==cci_over_df["Date"].iloc[-1]]["Symbol"].nunique()
+    today_cci_less_count = cci_less_df[cci_less_df["Date"]==cci_less_df["Date"].iloc[-1]]["Symbol"].nunique()
 
 
-    return r_df, buy_stock_list, sell_stock_list, daily_buy_stock_count_mean, daily_sell_stock_count_mean, today_buy_stock_count, today_sell_stock_count
+
+    return r_df, buy_stock_list, sell_stock_list, daily_buy_stock_count_mean, daily_sell_stock_count_mean, today_buy_stock_count, today_sell_stock_count, cci_over_count_mean, cci_less_count_mean, today_cci_over_count, today_cci_less_count

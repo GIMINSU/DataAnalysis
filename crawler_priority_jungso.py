@@ -14,14 +14,20 @@ def _get_priority_house_jungso(self):
     str_search_date = datetime.strftime(search_date, "%Y-%m-%d")
     try:
         driver = webdriver.Chrome(ChromeDriverManager().install())
+        driver.implicitly_wait(10)
         url = "https://www.smes.go.kr/sanhakin/websquare/wq_main.do"
         # url = "https://www.mss.go.kr/site/gyeonggi/ex/bbs/List.do?cbIdx=323"
         driver.get(url)
-        driver.implicitly_wait(40)
+        tabs = driver.window_handles
+        print(len(tabs))
+        while len(tabs) != 1:
+            driver.switch_to.window(tabs[1])
+            driver.close()
+            tabs = driver.window_handles
+        driver.switch_to.window(tabs[0])
+
         driver.find_element(By.XPATH, '//*[@id="genTopMenu_2_liTopMenu"]').click()
-        driver.implicitly_wait(40)
         driver.find_element(By.XPATH, '//*[@id="genLeftMenu_3_leftMenuGrp"]').click()
-        driver.implicitly_wait(40)
 
         for page in range(1, 3):
             # print(page)

@@ -25,7 +25,7 @@ def _collect_cci_signal(self, market_stock_dict):
             signal_dict["name"] = market_stock_dict[self.market][symbol]
             total_list.append(signal_dict)
 
-            total_df = total_df.append(signal_df)
+            total_df = pd.concat([total_df, signal_df])
         except Exception as e:
             print(f"{self.market} _collect_cci_signal Exception", e)
             pass

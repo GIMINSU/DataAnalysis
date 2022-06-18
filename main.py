@@ -145,7 +145,7 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
         schedule.every().days.at("22:40").do(self.run_crawler)
 
         while True:
-            now = datetime.now().time()
+            now = datetime.now()
 
             weekno = datetime.today().weekday()
             str_date = datetime.strftime(datetime.now().date(), "%Y-%m-%d")

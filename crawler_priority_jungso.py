@@ -18,14 +18,10 @@ def _get_priority_house_jungso(self):
         url = "https://www.smes.go.kr/sanhakin/websquare/wq_main.do"
         # url = "https://www.mss.go.kr/site/gyeonggi/ex/bbs/List.do?cbIdx=323"
         driver.get(url)
-        tabs = driver.window_handles
-        print(len(tabs))
-        while len(tabs) != 1:
-            driver.switch_to.window(tabs[1])
-            driver.close()
-            tabs = driver.window_handles
-        driver.switch_to.window(tabs[0])
-
+        popup_elements = driver.find_elements(By.XPATH, '//*[@class="w2window_close"]')
+        if len(popup_elements) > 0:
+            for p in popup_elements:
+                p.click()
         driver.find_element(By.XPATH, '//*[@id="genTopMenu_2_liTopMenu"]').click()
         driver.find_element(By.XPATH, '//*[@id="genLeftMenu_3_leftMenuGrp"]').click()
 

@@ -138,7 +138,7 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
 
     def worker(self):
         schedule.every().days.at("05:30").do(self.work)
-        schedule.every().days.at("09:05").do(self.work)
+        schedule.every().days.at("09:22").do(self.work)
         schedule.every().days.at("09:30").do(self.run_crawler)
         schedule.every().days.at("15:00").do(self.work)
         schedule.every().days.at("22:35").do(self.work)
@@ -181,9 +181,9 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                     print(text)
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
-
-                if (now > time(hour=5, minute=29)) and (now < time(hour=5, minute=31)):
-                    text = "Analyzing the SP500. Time. %s"%now
+                    
+                if (now.time() > time(hour=5, minute=29)) and (now.time() < time(hour=5, minute=31)):
+                    text = "Analyzing the SP500. Time. %s"%now.time()
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "sp500"
@@ -195,8 +195,8 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                if (now > time(hour=9, minute=4)) and (now < time(hour=9, minute=6)):
-                    text = "Analyzing the KOSPI. Time. %s"%now
+                if (now.time() > time(hour=9, minute=4)) and (now.time() < time(hour=9, minute=6)):
+                    text = "Analyzing the KOSPI. Time. %s"%now.time()
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "kospi"
@@ -208,8 +208,8 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                     _post_message(BaseService(), text = text)
                     pause.until(until_time)
 
-                if (now > time(hour=14, minute=59)) and (now < time(hour=15, minute=1)):
-                    text = "Analyzing the KOSPI. Time. %s"%now
+                if (now.time() > time(hour=14, minute=59)) and (now.time() < time(hour=15, minute=1)):
+                    text = "Analyzing the KOSPI. Time. %s"%now.time()
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "kospi"
@@ -222,8 +222,8 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
                     pause.until(until_time)
 
 
-                if (now > time(hour=22, minute=34)) and (now < time(hour=22, minute=36)):
-                    text = "Analyzing the SP500. Time. %s"%now
+                if (now.time() > time(hour=22, minute=34)) and (now.time() < time(hour=22, minute=36)):
+                    text = "Analyzing the SP500. Time. %s"%now.time()
                     print(text)
                     _post_message(BaseService(), text = text)
                     self.market = "sp500"

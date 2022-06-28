@@ -137,18 +137,29 @@ CCI전략수행시 보유주식 평균 구매가격: {x["holding_shares_buy_pric
             pass
 
     def worker(self):
-        schedule.every().days.at("05:30").do(self.work)
+        ## KOSPI 구동 
         schedule.every().days.at("09:05").do(self.work)
-        schedule.every().days.at("09:30").do(self.run_crawler)
         schedule.every().days.at("15:00").do(self.work)
-        schedule.every().days.at("22:35").do(self.work)
+
+        ## 중소기업 특공 크롤링 구동
+        schedule.every().days.at("09:30").do(self.run_crawler)
         schedule.every().days.at("22:40").do(self.run_crawler)
+
+        ## S&P500 구동
+        schedule.every().days.at("09:30").do(self.work)
+        schedule.every().days.at("22:35").do(self.work)
+        
 
         while True:
             now = datetime.now()
+            kst_now = datetime.utcnow() + timedelta(hours = 9)
+            edt_now = datetime.utcnow() - timedelta(hours = 4)
 
+            kst_weekno = kst_now.weekday()
+            edt_weekno = edt_now.weekday()
+            
             weekno = datetime.today().weekday()
-            str_date = datetime.strftime(datetime.now().date(), "%Y-%m-%d")
+            str_date = datetime.strftime(datetime.utnow().date(), "%Y-%m-%d")
 
             # 토요일인 경우 이틀 이후 다시 시작
             if weekno == 5:
